@@ -19,16 +19,27 @@ async function asyncMap(array, asyncCallback, debounceTime) {
     return results;
 }
 
-function asyncMapPromise(array, asyncCallback, debounceTime) {
+async function asyncMapPromise(array, asyncCallback, debounceTime, parallelLimit = 3) {
     const results = [];
+    let activePromises = 0;
+    let currentIndex = 0;
 
-    for (let i = 0; i < array.length; i++) {
+    const processNext = async () => {
+        if (currentIndex >= array.length) return;
+
+        while (activePromises >= parallelLimit) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+        }
+
+        const index = currentIndex++;
+        activePromises++;
+
         const startTime = Date.now();
-        
-        const promise = asyncCallback(array[i], i, array);
-        
+
+        const promise = asyncCallback(array[index], index, array);
+
         promise.then(result => {
-            results.push(result);
+            results[index] = result;
 
             if (debounceTime > 0) {
                 const elapsed = Date.now() - startTime;
@@ -36,13 +47,27 @@ function asyncMapPromise(array, asyncCallback, debounceTime) {
                     setTimeout(() => results.push(result), debounceTime - elapsed);
                 }
             }
+
+            activePromises--;
+            processNext();
         }).catch(error => {
             console.log('Error:', error);
+            activePromises--;
+            processNext();
         });
+    };
+
+    for (let i = 0; i < parallelLimit && currentIndex < array.length; i++) {
+        processNext();
     }
 
     return new Promise((resolve, reject) => {
-        setTimeout(() => resolve(results), 1000);
+        const checkCompletion = setInterval(() => {
+            if (activePromises === 0 && currentIndex === array.length) {
+                clearInterval(checkCompletion);
+                resolve(results);
+            }
+        }, 50);
     });
 }
 
@@ -99,6 +124,36 @@ function defineDemo3() {
     demo3();
 }
 
+function defineDemo4() {
+    const demo4 = () => {
+        async function asyncCallback(item, index, array) {
+            return new Promise(resolve => {
+                const delay = Math.random() * 1000;
+                console.log(`Task ${index + 1} started, will take ${Math.round(delay)}ms`);
+                setTimeout(() => {
+                    console.log(`Task ${index + 1} completed`);
+                    resolve(`Result ${index + 1}`);
+                }, delay);
+            });
+        }
+
+        // Test case to demonstrate parallelism
+        async function testAsyncMap() {
+            const array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+            const debounceTime = 0;
+            const parallelLimit = 3;
+
+            const results = await asyncMapPromise(array, asyncCallback, debounceTime, parallelLimit);
+            console.log('All tasks completed with results:', results);
+        }
+
+        testAsyncMap();
+
+    };
+
+    demo4();
+}
+
 async function delay(ms) {
     const start = Date.now();
     while (Date.now() - start < ms) {
@@ -106,5 +161,5 @@ async function delay(ms) {
 }
 
 (async () => {
-    defineDemo3();
+    defineDemo4();
 })();
