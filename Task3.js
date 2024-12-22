@@ -26,7 +26,10 @@ async function asyncMapPromise(array, asyncCallback, debounceTime, parallelLimit
 
     const processNext = async () => {
         if (signal && signal.aborted) {
-            console.log('Aborted!');
+            if (!signal._logged) {
+                console.log('Aborted!');
+                signal._logged = true;
+            }
             return;
         }
 
@@ -34,7 +37,10 @@ async function asyncMapPromise(array, asyncCallback, debounceTime, parallelLimit
 
         while (activePromises >= parallelLimit) {
             if (signal && signal.aborted) {
-                console.log('Aborted!');
+                if (!signal._logged) {
+                    console.log('Aborted!');
+                    signal._logged = true;
+                }
                 return;
             }
             await new Promise(resolve => setTimeout(resolve, 50));
