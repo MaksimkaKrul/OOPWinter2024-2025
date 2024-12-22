@@ -1,3 +1,8 @@
+const EventEmitter = require('events');
+
+class TaskEmitter extends EventEmitter {}
+const taskEmitter = new TaskEmitter();
+
 async function asyncMapObservable(array, asyncCallback, parallelLimit = 3) {
     const results = [];
     let activePromises = 0;
@@ -9,11 +14,14 @@ async function asyncMapObservable(array, asyncCallback, parallelLimit = 3) {
         const index = currentIndex++;
         activePromises++;
 
+        taskEmitter.emit('taskStart', { index });
+
         try {
             const result = await asyncCallback(array[index]);
             results[index] = result;
+            taskEmitter.emit('taskComplete', { index, result });
         } catch (error) {
-            console.error(`Error processing item ${index}:`, error);
+            taskEmitter.emit('taskError', { index, error });
         } finally {
             activePromises--;
             processNext(); 
@@ -31,7 +39,6 @@ async function asyncMapObservable(array, asyncCallback, parallelLimit = 3) {
     return results;
 }
 
-// Example usage
 (async () => {
     const nums = [1, 2, 3, 4, 5];
     const callback = async (n) => {
@@ -39,7 +46,19 @@ async function asyncMapObservable(array, asyncCallback, parallelLimit = 3) {
         return n * 2;
     };
 
-    console.log('Starting base functionality...');
+    taskEmitter.on('taskStart', ({ index }) => {
+        console.log(`Task ${index + 1} started.`);
+    });
+
+    taskEmitter.on('taskComplete', ({ index, result }) => {
+        console.log(`Task ${index + 1} Done: ${result}`);
+    });
+
+    taskEmitter.on('taskError', ({ index, error }) => {
+        console.log(`Task ${index + 1} failed: ${error.message}`);
+    });
+
+    console.log('Starting events');
     const results = await asyncMapObservable(nums, callback, 2);
-    console.log('Results:', results);
+    console.log('Result:', results);
 })();
