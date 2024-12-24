@@ -3,7 +3,7 @@ const EventEmitter = require('events');
 class TaskEmitter extends EventEmitter {}
 const taskEmitter = new TaskEmitter();
 
-async function asyncMapObservable(array, asyncCallback, debounceTime, parallelLimit = 3, signal) {
+const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLimit = 3, signal) => {
     const results = [];
     let activePromises = 0;
     let currentIndex = 0;
@@ -60,8 +60,7 @@ async function asyncMapObservable(array, asyncCallback, debounceTime, parallelLi
             }
         }, 50);
     });
-}
-
+};
 
 (async () => {
     const nums = [1, 2, 3, 4, 5];
