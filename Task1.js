@@ -11,17 +11,27 @@ const asyncMapCallback = (array, asyncCallback, debounceTime, done) => {
 
         const startTime = Date.now();
 
-        asyncCallback(array[currentIndex], currentIndex, array, (result) => {
-            results.push(result);
-            currentIndex++;
+        try {
+            asyncCallback(array[currentIndex], currentIndex, array, (result) => {
+                try {
+                    results.push(result);
+                    currentIndex++;
 
-            const elapsed = Date.now() - startTime;
-            if (debounceTime > 0 && elapsed < debounceTime) {
-                setTimeout(processNext, debounceTime - elapsed);
-            } else {
-                processNext();
-            }
-        });
+                    const elapsed = Date.now() - startTime;
+                    if (debounceTime > 0 && elapsed < debounceTime) {
+                        setTimeout(processNext, debounceTime - elapsed);
+                    } else {
+                        processNext();
+                    }
+                } catch (error) {
+                    console.error('Error in asyncCallback result handling:', error);
+                    done(results);
+                }
+            });
+        } catch (error) {
+            console.error('Error in asyncCallback execution:', error);
+            done(results);
+        }
     };
 
     processNext();
