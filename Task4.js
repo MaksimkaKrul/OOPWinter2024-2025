@@ -4,9 +4,9 @@ const chunkIterator = async function* (array, chunkSize) {
     }
 };
 
-const processChunks = async (array, asyncCallback, chunkSize = 5) => {
+const processChunks = async (array, chunkSize = 5) => {
     const results = [];
-    console.log('Starting chunk processing...');
+    console.log('Starting chunk processing');
 
     for await (const chunk of chunkIterator(array, chunkSize)) {
         console.log(`Processing chunk: ${JSON.stringify(chunk)}`);
@@ -14,7 +14,15 @@ const processChunks = async (array, asyncCallback, chunkSize = 5) => {
         const chunkResult = [];
         for (const item of chunk) {
             console.log(`Processing item: ${item}`);
-            const result = await asyncCallback(item);
+
+            // Logic should be here
+            const result = await new Promise(resolve => {
+                console.log(`Simulating processing of number ${item}`);
+                setTimeout(() => {
+                    resolve(`${item} Done`); 
+                }, 300);
+            });
+
             chunkResult.push(result);
         }
 
@@ -22,22 +30,17 @@ const processChunks = async (array, asyncCallback, chunkSize = 5) => {
         results.push(...chunkResult);
     }
 
-    console.log('All chunks processed.');
+    console.log('All chunks processed!');
     return results;
 };
 
 const defineDemoTask4 = () => {
     const demoTask4 = async () => {
         const largeDataset = Array.from({ length: 50 }, (_, i) => i + 1);
-        const asyncCallback = async (n) => {
-            console.log(`Simulating processing of number ${n}`);
-            await new Promise(resolve => setTimeout(resolve, 300)); 
-            return `${n} Done`;
-        };
 
-        console.log('Processing large dataset...');
-        const results = await processChunks(largeDataset, asyncCallback, 10);
-        console.log('Task 4 Result:', results);
+        console.log('Processing large dataset!');
+        const results = await processChunks(largeDataset, 10);
+        console.log('Task 4 Result - ', results);
     };
 
     demoTask4();

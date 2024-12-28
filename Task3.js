@@ -19,7 +19,7 @@ const asyncMap = async (array, asyncCallback, debounceTime) => {
     return results;
 };
 
-const asyncMapPromise = async (array, asyncCallback, debounceTime = 0, parallelLimit = 3, signal) => {
+const asyncMapPromise = async (array, debounceTime = 0, parallelLimit = 3, signal) => {
     const results = [];
     let activePromises = 0;
     let currentIndex = 0;
@@ -45,7 +45,14 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime = 0, parallelL
 
         try {
             const startTime = Date.now();
-            const result = await asyncCallback(array[index], index, array);
+
+            // Logic should be here
+            const result = await new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(array[index] * 3); 
+                }, 500); 
+            });
+
             results[index] = result;
 
             if (debounceTime > 0) {
@@ -58,7 +65,7 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime = 0, parallelL
             console.error(`Error processing index ${index}:`, error);
         } finally {
             activePromises--;
-            await processNext(); 
+            await processNext();
         }
     };
 
@@ -72,6 +79,7 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime = 0, parallelL
 
     return results;
 };
+
 
 
 // const defineDemo1 = () => {
@@ -158,30 +166,20 @@ const defineDemo4 = () => {
 const defineDemoWithAbort = () => {
     const demo = () => {
         const nums = [1, 2, 3, 4, 5];
-        const callback = (n) => {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(n * 3);
-                }, 500);
-            });
-        };
-
         const controller = new AbortController();
-
-        console.log('Demo with AbortController: Start');
-
-        asyncMapPromise(nums, callback, 100, 2, controller.signal)
+        asyncMapPromise(nums, 100, 2, controller.signal)
             .then(res => {
-                console.log('Demo Result:', res);
+                console.log('Demo Result:', res); 
             })
             .catch(err => {
                 console.log('Demo Error:', err.message);
             });
-
+        
         setTimeout(() => {
-            console.log('Aborting operation...');
+            console.log('Aborting operation:');
             controller.abort();
         }, 1000);
+        
     };
 
     demo();

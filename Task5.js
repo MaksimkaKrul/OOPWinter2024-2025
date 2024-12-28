@@ -3,7 +3,7 @@ const EventEmitter = require('events');
 class TaskEmitter extends EventEmitter {}
 const taskEmitter = new TaskEmitter();
 
-const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLimit = 3, signal) => {
+const asyncMapObservable = async (array, debounceTime, parallelLimit = 3, signal) => {
     const results = [];
     let activePromises = 0;
     let currentIndex = 0;
@@ -24,7 +24,15 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
         const startTime = Date.now();
 
         try {
-            const result = await asyncCallback(array[index]);
+            // Logic should be here
+            const result = await new Promise(resolve => {
+                const n = array[index];
+                console.log(`Simulating processing of number ${n}`);
+                setTimeout(() => {
+                    resolve(n * 2); 
+                }, 500); 
+            });
+
             results[index] = result;
 
             if (debounceTime > 0) {
@@ -71,11 +79,6 @@ TaskEmitter.prototype.emitAsync = async function (event, data) {
 
 (async () => {
     const nums = [1, 2, 3, 4, 5];
-    const callback = async (n) => {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        return n * 2;
-    };
-
     const controller = new AbortController();
 
     taskEmitter.on('taskStart', async ({ index }) => {
@@ -95,7 +98,7 @@ TaskEmitter.prototype.emitAsync = async function (event, data) {
     });
 
     console.log('Starting processing with debounce and abort support...');
-    asyncMapObservable(nums, callback, 100, 2, controller.signal)
+    asyncMapObservable(nums, 100, 2, controller.signal)
         .then(res => {
             console.log('Result:', res);
         })

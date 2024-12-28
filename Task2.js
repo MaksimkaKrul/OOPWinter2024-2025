@@ -19,10 +19,11 @@ const asyncMap = async (array, asyncCallback, debounceTime) => {
     return results;
 };
 
-const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit = 3) => {
+const asyncMapPromise = async (array, debounceTime, parallelLimit = 3) => {
     const results = [];
     let activePromises = 0;
     let currentIndex = 0;
+    let errorOccurred = false;
 
     const processNext = async () => {
         if (currentIndex >= array.length) return;
@@ -36,7 +37,13 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit
 
         try {
             const startTime = Date.now();
-            const result = await asyncCallback(array[index], index, array);
+
+            // Logic for each task should be here
+            const result = await new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(array[index] * 3); 
+                }, 500);
+            });
             results[index] = result;
 
             if (debounceTime > 0) {
@@ -46,6 +53,7 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit
                 }
             }
         } catch (error) {
+            errorOccurred = true;
             console.error(`Error processing index ${index}:`, error);
         } finally {
             activePromises--;
@@ -56,7 +64,12 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit
     const workers = Array.from({ length: Math.min(parallelLimit, array.length) }, processNext);
 
     await Promise.all(workers);
-    return results;
+
+    if (errorOccurred) {
+        console.log('One or more errors occurred during processing');
+    }
+    
+    return results; 
 };
 
 
@@ -114,21 +127,12 @@ const defineDemo3 = () => {
 
 const defineDemo4 = () => {
     const demo4 = () => {
-        const asyncCallback = (item, index, array) => new Promise(resolve => {
-            const delay = Math.random() * 1000;
-            console.log(`Task ${index + 1} started, will take ${Math.round(delay)}ms`);
-            setTimeout(() => {
-                console.log(`Task ${index + 1} completed`);
-                resolve(`Result ${index + 1}`);
-            }, delay);
-        });
-
         const testAsyncMap = async () => {
             const array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
             const debounceTime = 0;
             const parallelLimit = 3;
 
-            const results = await asyncMapPromise(array, asyncCallback, debounceTime, parallelLimit);
+            const results = await asyncMapPromise(array, debounceTime, parallelLimit);
             console.log('All tasks completed with results:', results);
         };
 
