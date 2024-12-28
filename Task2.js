@@ -34,42 +34,31 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit
         const index = currentIndex++;
         activePromises++;
 
-        const startTime = Date.now();
-
-        const promise = asyncCallback(array[index], index, array);
-
-        promise.then(result => {
+        try {
+            const startTime = Date.now();
+            const result = await asyncCallback(array[index], index, array);
             results[index] = result;
 
             if (debounceTime > 0) {
                 const elapsed = Date.now() - startTime;
                 if (elapsed < debounceTime) {
-                    setTimeout(() => results.push(result), debounceTime - elapsed);
+                    await new Promise(resolve => setTimeout(resolve, debounceTime - elapsed));
                 }
             }
-
+        } catch (error) {
+            console.error(`Error processing index ${index}:`, error);
+        } finally {
             activePromises--;
-            processNext();
-        }).catch(error => {
-            console.log('Error:', error);
-            activePromises--;
-            processNext();
-        });
+            await processNext();
+        }
     };
 
-    for (let i = 0; i < parallelLimit && currentIndex < array.length; i++) {
-        processNext();
-    }
+    const workers = Array.from({ length: Math.min(parallelLimit, array.length) }, processNext);
 
-    return new Promise((resolve) => {
-        const checkCompletion = setInterval(() => {
-            if (activePromises === 0 && currentIndex === array.length) {
-                clearInterval(checkCompletion);
-                resolve(results);
-            }
-        }, 50);
-    });
+    await Promise.all(workers);
+    return results;
 };
+
 
 // const defineDemo1 = () => {
 //     const demo1 = async () => {

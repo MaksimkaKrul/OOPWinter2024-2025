@@ -10,7 +10,7 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
 
     const processNext = async () => {
         if (signal && signal.aborted) {
-            taskEmitter.emit('abort', { message: 'Operation aborted' });
+            await taskEmitter.emitAsync('abort', { message: 'Operation aborted' });
             return;
         }
 
@@ -19,7 +19,7 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
         const index = currentIndex++;
         activePromises++;
 
-        taskEmitter.emit('taskStart', { index });
+        await taskEmitter.emitAsync('taskStart', { index });
 
         const startTime = Date.now();
 
@@ -34,9 +34,9 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
                 }
             }
 
-            taskEmitter.emit('taskComplete', { index, result });
+            await taskEmitter.emitAsync('taskComplete', { index, result });
         } catch (error) {
-            taskEmitter.emit('taskError', { index, error });
+            await taskEmitter.emitAsync('taskError', { index, error });
         } finally {
             activePromises--;
             processNext();
@@ -48,7 +48,7 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
     }
 
     return new Promise((resolve, reject) => {
-        const checkCompletion = setInterval(() => {
+        const checkCompletion = setInterval(async () => {
             if (signal && signal.aborted) {
                 clearInterval(checkCompletion);
                 reject(new Error('Operation aborted'));
@@ -62,6 +62,13 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
     });
 };
 
+TaskEmitter.prototype.emitAsync = async function (event, data) {
+    const listeners = this.listeners(event);
+    for (const listener of listeners) {
+        await listener(data);
+    }
+};
+
 (async () => {
     const nums = [1, 2, 3, 4, 5];
     const callback = async (n) => {
@@ -71,23 +78,23 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
 
     const controller = new AbortController();
 
-    taskEmitter.on('taskStart', ({ index }) => {
+    taskEmitter.on('taskStart', async ({ index }) => {
         console.log(`Task ${index + 1} started.`);
     });
 
-    taskEmitter.on('taskComplete', ({ index, result }) => {
+    taskEmitter.on('taskComplete', async ({ index, result }) => {
         console.log(`Task ${index + 1} Done: ${result}`);
     });
 
-    taskEmitter.on('taskError', ({ index, error }) => {
+    taskEmitter.on('taskError', async ({ index, error }) => {
         console.log(`Task ${index + 1} failed: ${error.message}`);
     });
 
-    taskEmitter.on('abort', ({ message }) => {
+    taskEmitter.on('abort', async ({ message }) => {
         console.log(message);
     });
 
-    console.log('Starting deb. and abort');
+    console.log('Starting processing with debounce and abort support...');
     asyncMapObservable(nums, callback, 100, 2, controller.signal)
         .then(res => {
             console.log('Result:', res);
@@ -97,7 +104,7 @@ const asyncMapObservable = async (array, asyncCallback, debounceTime, parallelLi
         });
 
     setTimeout(() => {
-        console.log('Aborting');
+        console.log('Aborting...');
         controller.abort();
     }, 1000);
 })();

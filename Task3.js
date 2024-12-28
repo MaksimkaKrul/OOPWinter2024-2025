@@ -19,29 +19,23 @@ const asyncMap = async (array, asyncCallback, debounceTime) => {
     return results;
 };
 
-const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit = 3, signal) => {
+const asyncMapPromise = async (array, asyncCallback, debounceTime = 0, parallelLimit = 3, signal) => {
     const results = [];
     let activePromises = 0;
     let currentIndex = 0;
 
     const processNext = async () => {
-        if (signal && signal.aborted) {
-            if (!signal._logged) {
-                console.log('Aborted!');
-                signal._logged = true;
-            }
-            return;
+        if (signal?.aborted) {
+            console.log('Aborted!');
+            throw new Error('Operation aborted');
         }
 
         if (currentIndex >= array.length) return;
 
         while (activePromises >= parallelLimit) {
-            if (signal && signal.aborted) {
-                if (!signal._logged) {
-                    console.log('Aborted!');
-                    signal._logged = true;
-                }
-                return;
+            if (signal?.aborted) {
+                console.log('Aborted!');
+                throw new Error('Operation aborted');
             }
             await new Promise(resolve => setTimeout(resolve, 50));
         }
@@ -49,11 +43,9 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit
         const index = currentIndex++;
         activePromises++;
 
-        const startTime = Date.now();
-
         try {
+            const startTime = Date.now();
             const result = await asyncCallback(array[index], index, array);
-
             results[index] = result;
 
             if (debounceTime > 0) {
@@ -63,31 +55,24 @@ const asyncMapPromise = async (array, asyncCallback, debounceTime, parallelLimit
                 }
             }
         } catch (error) {
-            console.log('Error:', error);
+            console.error(`Error processing index ${index}:`, error);
         } finally {
             activePromises--;
-            processNext();
+            await processNext(); 
         }
     };
 
-    for (let i = 0; i < parallelLimit && currentIndex < array.length; i++) {
-        processNext();
+    const workers = Array.from({ length: Math.min(parallelLimit, array.length) }, processNext);
+
+    await Promise.allSettled(workers);
+
+    if (signal?.aborted) {
+        throw new Error('Operation aborted');
     }
 
-    return new Promise((resolve, reject) => {
-        const checkCompletion = setInterval(() => {
-            if (signal && signal.aborted) {
-                clearInterval(checkCompletion);
-                reject(new Error('Operation aborted'));
-            }
-
-            if (activePromises === 0 && currentIndex === array.length) {
-                clearInterval(checkCompletion);
-                resolve(results);
-            }
-        }, 50);
-    });
+    return results;
 };
+
 
 // const defineDemo1 = () => {
 //     const demo1 = async () => {

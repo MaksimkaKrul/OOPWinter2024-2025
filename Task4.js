@@ -5,16 +5,18 @@ const chunkIterator = async function* (array, chunkSize) {
 };
 
 const processChunks = async (array, asyncCallback, chunkSize = 5) => {
-    let results = [];
+    const results = [];
     console.log('Starting chunk processing...');
 
     for await (const chunk of chunkIterator(array, chunkSize)) {
         console.log(`Processing chunk: ${JSON.stringify(chunk)}`);
 
-        const chunkResult = await Promise.all(chunk.map(async (item) => {
+        const chunkResult = [];
+        for (const item of chunk) {
             console.log(`Processing item: ${item}`);
-            return await asyncCallback(item);
-        }));
+            const result = await asyncCallback(item);
+            chunkResult.push(result);
+        }
 
         console.log(`Processed chunk results: ${JSON.stringify(chunkResult)}`);
         results.push(...chunkResult);
@@ -29,9 +31,8 @@ const defineDemoTask4 = () => {
         const largeDataset = Array.from({ length: 50 }, (_, i) => i + 1);
         const asyncCallback = async (n) => {
             console.log(`Simulating processing of number ${n}`);
-            return new Promise(resolve => {
-                setTimeout(() => resolve(`${n} Done`), 300);
-            });
+            await new Promise(resolve => setTimeout(resolve, 300)); 
+            return `${n} Done`;
         };
 
         console.log('Processing large dataset...');
