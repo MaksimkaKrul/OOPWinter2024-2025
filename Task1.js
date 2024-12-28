@@ -1,63 +1,73 @@
-const asyncMap = async (array, asyncCallback, debounceTime) => {
+const asyncMapCallback = (array, asyncCallback, debounceTime, done) => {
     const results = [];
+    let currentIndex = 0;
     debounceTime = debounceTime || 0;
 
-    for (let i = 0; i < array.length; i++) {
+    const processNext = () => {
+        if (currentIndex >= array.length) {
+            done(results); 
+            return;
+        }
+
         const startTime = Date.now();
 
-        const result = await asyncCallback(array[i], i, array);
-        results.push(result);
+        asyncCallback(array[currentIndex], currentIndex, array, (result) => {
+            results.push(result);
+            currentIndex++;
 
-        if (debounceTime > 0) {
             const elapsed = Date.now() - startTime;
-            if (elapsed < debounceTime) {
-                await new Promise(resolve => setTimeout(resolve, debounceTime - elapsed));
+            if (debounceTime > 0 && elapsed < debounceTime) {
+                setTimeout(processNext, debounceTime - elapsed);
+            } else {
+                processNext();
             }
-        }
-    }
+        });
+    };
 
-    return results;
+    processNext();
 };
 
 const defineDemo1 = () => {
-    const demo1 = async () => {
+    const demo1 = () => {
         const nums = [1, 2, 3, 4, 5];
-        const callback = async (n) => {
-            await delay(100);
-            return n * 2;
+        const callback = (n, index, array, done) => {
+            delay(100, () => {
+                done(n * 2);
+            });
         };
 
-        console.log('Demo 1: Start');
-        const res = await asyncMap(nums, callback);
-        console.log('Demo 1 Result:', res);
+        console.log('Demo 1:');
+        asyncMapCallback(nums, callback, 0, (res) => {
+            console.log('Demo 1:', res);
+        });
     };
 
     demo1();
 };
 
 const defineDemo2 = () => {
-    const demo2 = async () => {
+    const demo2 = () => {
         const nums = [1, 2, 3, 4, 5];
-        const callback = async (n) => {
-            await delay(500);
-            return n * 3;
+        const callback = (n, index, array, done) => {
+            delay(500, () => {
+                done(n * 3);
+            });
         };
 
-        console.log('Demo 2: Start');
-        const res = await asyncMap(nums, callback, 100);
-        console.log('Demo 2 Result:', res);
+        console.log('Demo 2:');
+        asyncMapCallback(nums, callback, 100, (res) => {
+            console.log('Demo 2:', res);
+        });
     };
 
     demo2();
 };
 
-const delay = async (ms) => {
-    const start = Date.now();
-    while (Date.now() - start < ms) {
-    }
+const delay = (ms, done) => {
+    setTimeout(done, ms);
 };
 
-(async () => {
+(() => {
     defineDemo1();
     defineDemo2();
 })();
